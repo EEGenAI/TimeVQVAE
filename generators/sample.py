@@ -12,9 +12,8 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from generators.maskgit import MaskGIT
-from preprocessing.data_pipeline import build_data_pipeline
-from utils import get_root_dir, load_yaml_param_settings
+from .maskgit import MaskGIT
+from ..utils import get_root_dir
 
 
 @torch.no_grad()
@@ -33,17 +32,23 @@ def unconditional_sample(maskgit: MaskGIT, n_samples: int, device, class_index=N
         b = batch_size
         if (i+1 == n_iters) and is_residual_batch:
             b = n_samples - ((n_iters-1) * batch_size)
-        embed_ind_l, embed_ind_h = sample_callback(num=b, device=device, class_index=class_index)
+        embed_ind_l, embed_ind_h = sample_callback(
+            num=b, device=device, class_index=class_index)
 
         if return_representations:
-            x_l, quantize_l = maskgit.decode_token_ind_to_timeseries(embed_ind_l, 'lf', True)
-            x_h, quantize_h = maskgit.decode_token_ind_to_timeseries(embed_ind_h, 'hf', True)
-            x_l, quantize_l, x_h, quantize_h = x_l.cpu(), quantize_l.cpu(), x_h.cpu(), quantize_h.cpu()
+            x_l, quantize_l = maskgit.decode_token_ind_to_timeseries(
+                embed_ind_l, 'lf', True)
+            x_h, quantize_h = maskgit.decode_token_ind_to_timeseries(
+                embed_ind_h, 'hf', True)
+            x_l, quantize_l, x_h, quantize_h = x_l.cpu(
+            ), quantize_l.cpu(), x_h.cpu(), quantize_h.cpu()
             quantize_new_l.append(quantize_l)
             quantize_new_h.append(quantize_h)
         else:
-            x_l = maskgit.decode_token_ind_to_timeseries(embed_ind_l, 'lf').cpu()
-            x_h = maskgit.decode_token_ind_to_timeseries(embed_ind_h, 'hf').cpu()
+            x_l = maskgit.decode_token_ind_to_timeseries(
+                embed_ind_l, 'lf').cpu()
+            x_h = maskgit.decode_token_ind_to_timeseries(
+                embed_ind_h, 'hf').cpu()
 
         x_new_l.append(x_l)
         x_new_h.append(x_h)
@@ -67,10 +72,12 @@ def conditional_sample(maskgit: MaskGIT, n_samples: int, device, class_index: in
     class_index: starting from 0. If there are two classes, then `class_index` ∈ {0, 1}.
     """
     if return_representations:
-        (x_new_l, x_new_h, x_new), (quantize_new_l, quantize_new_h) = unconditional_sample(maskgit, n_samples, device, class_index, batch_size)
+        (x_new_l, x_new_h, x_new), (quantize_new_l, quantize_new_h) = unconditional_sample(
+            maskgit, n_samples, device, class_index, batch_size)
         return (x_new_l, x_new_h, x_new), (quantize_new_l, quantize_new_h)
     else:
-        x_new_l, x_new_h, x_new = unconditional_sample(maskgit, n_samples, device, class_index, batch_size)
+        x_new_l, x_new_h, x_new = unconditional_sample(
+            maskgit, n_samples, device, class_index, batch_size)
         return x_new_l, x_new_h, x_new
 
 
@@ -80,7 +87,8 @@ def plot_generated_samples(x_new_l, x_new_h, x_new, title: str, max_len=20):
     """
     n_samples = x_new.shape[0]
     if n_samples > max_len:
-        print(f"`n_samples` is too large for visualization. maximum is {max_len}")
+        print(
+            f"`n_samples` is too large for visualization. maximum is {max_len}")
         return None
 
     try:
@@ -101,7 +109,8 @@ def plot_generated_samples(x_new_l, x_new_h, x_new, title: str, max_len=20):
         plt.tight_layout()
         plt.show()
     except ValueError:
-        print(f"`n_samples` is too large for visualization. maximum is {max_len}")
+        print(
+            f"`n_samples` is too large for visualization. maximum is {max_len}")
 
 
 def save_generated_samples(x_new: np.ndarray, save: bool, fname: str = None):
@@ -109,4 +118,5 @@ def save_generated_samples(x_new: np.ndarray, save: bool, fname: str = None):
         fname = 'generated_samples.npy' if not fname else fname
         with open(get_root_dir().joinpath('generated_samples', fname), 'wb') as f:
             np.save(f, x_new)
-            print("numpy matrix of the generated samples are saved as `generated_samples/generated_samples.npy`.")
+            print(
+                "numpy matrix of the generated samples are saved as `generated_samples/generated_samples.npy`.")
