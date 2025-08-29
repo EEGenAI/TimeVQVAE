@@ -14,7 +14,7 @@ from supervised_FCN_2.example_compute_IS import calculate_inception_score
 from generators.sample import unconditional_sample, conditional_sample
 
 from evaluation.rocket_functions import generate_kernels, apply_kernels
-from timevqvae.preprocessing.preprocess_ucr import DatasetImporterUCR, DatasetImporterCustom
+from timevqvae.timevqvae.preprocessing.preprocess_ucr import DatasetImporterUCR, DatasetImporterCustom
 from timevqvae.utils import freeze, remove_outliers
 from evaluation.stat_metrics import marginal_distribution_difference, auto_correlation_difference, skewness_difference, kurtosis_difference
 
