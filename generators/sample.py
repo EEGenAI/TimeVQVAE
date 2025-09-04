@@ -12,8 +12,8 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from generators.maskgit import MaskGIT
-from utils import get_root_dir
+from .maskgit import MaskGIT
+from ..utils import get_root_dir
 
 
 @torch.no_grad()
