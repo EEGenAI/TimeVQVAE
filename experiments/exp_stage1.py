@@ -102,23 +102,59 @@ class ExpStage1(pl.LightningModule):
             alpha = 0.7
             n_rows = 3
             fig, axes = plt.subplots(n_rows, 1, figsize=(4, 2*n_rows))
+
+            # Extract data for plotting and metrics
+            x_l_data = x_l[b, c].cpu()
+            xhat_l_data = xhat_l[b, c].detach().cpu()
+            x_h_data = x_h[b, c].cpu()
+            xhat_h_data = xhat_h[b, c].detach().cpu()
+            x_combined = x_l_data + x_h_data
+            xhat_combined = xhat_l_data + xhat_h_data
+
+            # Calculate reconstruction metrics for this sample
+            mse_l = F.mse_loss(xhat_l_data, x_l_data).item()
+            mse_h = F.mse_loss(xhat_h_data, x_h_data).item()
+            mse_combined = F.mse_loss(xhat_combined, x_combined).item()
+
             plt.suptitle(
-                f'step-{self.global_step} | channel idx:{c} \n (blue:GT, orange:reconstructed)')
-            axes[0].plot(x_l[b, c].cpu(), alpha=alpha)
-            axes[0].plot(xhat_l[b, c].detach().cpu(), alpha=alpha)
+                f'Step {self.global_step} | Channel {c} | MSE: LF={mse_l:.4f}, HF={mse_h:.4f}, Total={mse_combined:.4f}')
+
+            # Plot LF components with adaptive y-limits
+            axes[0].plot(x_l_data, alpha=alpha, label='Ground Truth')
+            axes[0].plot(xhat_l_data, alpha=alpha, label='Reconstructed')
             axes[0].set_title(r'$x_l$ (LF)')
-            axes[0].set_ylim(-4, 4)
+            # Adaptive y-limits based on actual data range
+            y_min_l = min(x_l_data.min().item(), xhat_l_data.min().item())
+            y_max_l = max(x_l_data.max().item(), xhat_l_data.max().item())
+            y_margin_l = (y_max_l - y_min_l) * 0.1  # 10% margin
+            axes[0].set_ylim(y_min_l - y_margin_l, y_max_l + y_margin_l)
+            axes[0].legend(fontsize=8)
 
-            axes[1].plot(x_h[b, c].cpu(), alpha=alpha)
-            axes[1].plot(xhat_h[b, c].detach().cpu(), alpha=alpha)
+            # Plot HF components with adaptive y-limits
+            axes[1].plot(x_h_data, alpha=alpha, label='Ground Truth')
+            axes[1].plot(xhat_h_data, alpha=alpha, label='Reconstructed')
             axes[1].set_title(r'$x_h$ (HF)')
-            axes[1].set_ylim(-4, 4)
+            # Adaptive y-limits based on actual data range
+            y_min_h = min(x_h_data.min().item(), xhat_h_data.min().item())
+            y_max_h = max(x_h_data.max().item(), xhat_h_data.max().item())
+            y_margin_h = (y_max_h - y_min_h) * 0.1  # 10% margin
+            axes[1].set_ylim(y_min_h - y_margin_h, y_max_h + y_margin_h)
+            axes[1].legend(fontsize=8)
 
-            axes[2].plot(x_l[b, c].cpu() + x_h[b, c].cpu(), alpha=alpha)
-            axes[2].plot(xhat_l[b, c].detach().cpu() +
-                         xhat_h[b, c].detach().cpu(), alpha=alpha)
+            # Plot combined signal with adaptive y-limits
+            axes[2].plot(x_combined, alpha=alpha, label='Ground Truth')
+            axes[2].plot(xhat_combined, alpha=alpha, label='Reconstructed')
             axes[2].set_title(r'$x$ (LF+HF)')
-            axes[2].set_ylim(-4, 4)
+            # Adaptive y-limits based on actual data range
+            y_min_combined = min(x_combined.min().item(),
+                                 xhat_combined.min().item())
+            y_max_combined = max(x_combined.max().item(),
+                                 xhat_combined.max().item())
+            y_margin_combined = (
+                y_max_combined - y_min_combined) * 0.1  # 10% margin
+            axes[2].set_ylim(y_min_combined - y_margin_combined,
+                             y_max_combined + y_margin_combined)
+            axes[2].legend(fontsize=8)
 
             plt.tight_layout()
             wandb.log({"x vs x_rec (val)": wandb.Image(plt)})
