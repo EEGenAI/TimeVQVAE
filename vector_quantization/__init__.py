@@ -1,2 +1,1 @@
-from vector_quantization.vq import VectorQuantize
-
+from .vq import VectorQuantize

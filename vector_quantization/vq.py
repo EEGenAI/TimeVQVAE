@@ -12,7 +12,7 @@ from torch.distributions.categorical import Categorical
 from einops import rearrange, repeat
 from contextlib import contextmanager
 
-from utils import *
+from ..utils import *
 
 
 def exists(val):
@@ -83,7 +83,8 @@ def kmeans(samples, num_clusters, num_iters=10, use_cosine_sim=False):
         if use_cosine_sim:
             dists = samples @ means.t()
         else:
-            diffs = rearrange(samples, 'n d -> n () d') - rearrange(means, 'c d -> () c d')
+            diffs = rearrange(samples, 'n d -> n () d') - \
+                rearrange(means, 'c d -> () c d')
             dists = -(diffs ** 2).sum(dim=-1)
 
         buckets = dists.max(dim=-1).indices
@@ -120,6 +121,7 @@ class EuclideanCodebook(nn.Module):
     """
     source: https://github.com/lucidrains/vector-quantize-pytorch/blob/master/vector_quantize_pytorch/vector_quantize_pytorch.py
     """
+
     def __init__(
             self,
             dim,
@@ -166,7 +168,8 @@ class EuclideanCodebook(nn.Module):
         if self.initted:
             return
 
-        embed, cluster_size = kmeans(data, self.codebook_size, self.kmeans_iters)
+        embed, cluster_size = kmeans(
+            data, self.codebook_size, self.kmeans_iters)
         self.embed.data.copy_(embed)
         self.embed_avg.data.copy_(embed.clone())
         self.cluster_size.data.copy_(cluster_size)
@@ -191,7 +194,7 @@ class EuclideanCodebook(nn.Module):
         self.replace(batch_samples, mask=expired_codes)
 
     @autocast(enabled=False)
-    def forward(self, x, svq_temp:Union[float,None]=None):
+    def forward(self, x, svq_temp: Union[float, None] = None):
         shape, dtype = x.shape, x.dtype
         flatten = rearrange(x, '... d -> (...) d')
 
@@ -204,16 +207,17 @@ class EuclideanCodebook(nn.Module):
             embed = F.dropout(embed, self.emb_dropout)
 
         dist = -(
-                flatten.pow(2).sum(1, keepdim=True)
-                - 2 * flatten @ embed
-                + embed.pow(2).sum(0, keepdim=True)
+            flatten.pow(2).sum(1, keepdim=True)
+            - 2 * flatten @ embed
+            + embed.pow(2).sum(0, keepdim=True)
         )
         # embed_ind = gumbel_sample(dist, dim=-1, temperature=self.sample_codebook_temp)
         temp = svq_temp
         if self.training:
             embed_ind = softmax_sample(dist, dim=-1, temperature=temp)
         else:
-            embed_ind = softmax_sample(dist, dim=-1, temperature=temp)  # no stochasticity
+            embed_ind = softmax_sample(
+                dist, dim=-1, temperature=temp)  # no stochasticity
         embed_onehot = F.one_hot(embed_ind, self.codebook_size).type(dtype)
         embed_ind = embed_ind.view(*shape[:-1])
         quantize = F.embedding(embed_ind, self.embed)
@@ -228,14 +232,16 @@ class EuclideanCodebook(nn.Module):
             self.all_reduce_fn(embed_sum)
 
             ema_inplace(self.embed_avg, embed_sum.t(), self.decay)
-            cluster_size = laplace_smoothing(self.cluster_size, self.codebook_size, self.eps) * self.cluster_size.sum()
+            cluster_size = laplace_smoothing(
+                self.cluster_size, self.codebook_size, self.eps) * self.cluster_size.sum()
             embed_normalized = self.embed_avg / cluster_size.unsqueeze(1)
             self.embed.data.copy_(embed_normalized)
             self.expire_codes_(x)
 
         # perplexity
         avg_probs = torch.mean(embed_onehot, dim=0)  # (K,)
-        perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10)))
+        perplexity = torch.exp(-torch.sum(avg_probs *
+                               torch.log(avg_probs + 1e-10)))
         self.embed_onehot = embed_onehot.detach()  # .cpu()
         self.perplexity = perplexity.detach()  # .cpu()
 
@@ -273,8 +279,10 @@ class VectorQuantize(nn.Module):
         codebook_input_dim = codebook_dim * heads
 
         requires_projection = codebook_input_dim != dim
-        self.project_in = nn.Linear(dim, codebook_input_dim) if requires_projection else nn.Identity()
-        self.project_out = nn.Linear(codebook_input_dim, dim) if requires_projection else nn.Identity()
+        self.project_in = nn.Linear(
+            dim, codebook_input_dim) if requires_projection else nn.Identity()
+        self.project_out = nn.Linear(
+            codebook_input_dim, dim) if requires_projection else nn.Identity()
 
         self.eps = eps
         self.commitment_weight = commitment_weight
@@ -309,7 +317,7 @@ class VectorQuantize(nn.Module):
     def codebook(self):
         return self._codebook.embed
 
-    def forward(self, x, svq_temp:Union[float,None]=None):
+    def forward(self, x, svq_temp: Union[float, None] = None):
         """
         x: (B, N, D)
         """
@@ -335,13 +343,15 @@ class VectorQuantize(nn.Module):
         quantize, embed_ind = self._codebook(x, svq_temp)
 
         if self.training:
-            quantize = x + (quantize - x).detach()  # allows `z`-part to be trainable while `z_q`-part is un-trainable. `z_q` is updated by the EMA.
+            # allows `z`-part to be trainable while `z_q`-part is un-trainable. `z_q` is updated by the EMA.
+            quantize = x + (quantize - x).detach()
 
         if self.training:
             if self.commitment_weight > 0:
                 commit_loss = F.mse_loss(quantize.detach(), x)
                 vq_loss['commit_loss'] = commit_loss
-                vq_loss['loss'] = vq_loss['loss'] + commit_loss * self.commitment_weight
+                vq_loss['loss'] = vq_loss['loss'] + \
+                    commit_loss * self.commitment_weight
 
             if self.orthogonal_reg_weight > 0:
                 codebook = self.codebook
@@ -353,12 +363,14 @@ class VectorQuantize(nn.Module):
 
                 num_codes = codebook.shape[0]
                 if exists(self.orthogonal_reg_max_codes) and num_codes > self.orthogonal_reg_max_codes:
-                    rand_ids = torch.randperm(num_codes, device=device)[:self.orthogonal_reg_max_codes]
+                    rand_ids = torch.randperm(num_codes, device=device)[
+                        :self.orthogonal_reg_max_codes]
                     codebook = codebook[rand_ids]
 
                 orthogonal_reg_loss = orthgonal_loss_fn(codebook)
                 vq_loss['orthogonal_reg_loss'] = orthogonal_reg_loss
-                vq_loss['loss'] = vq_loss['loss'] + orthogonal_reg_loss * self.orthogonal_reg_weight
+                vq_loss['loss'] = vq_loss['loss'] + \
+                    orthogonal_reg_loss * self.orthogonal_reg_weight
 
         if is_multiheaded:
             quantize = rearrange(quantize, '(b h) n d -> b n (h d)', h=heads)
@@ -370,8 +382,10 @@ class VectorQuantize(nn.Module):
             quantize = rearrange(quantize, 'b n d -> b d n')
 
         if self.accept_image_fmap:
-            quantize = rearrange(quantize, 'b (h w) c -> b c h w', h=height, w=width)
-            embed_ind = rearrange(embed_ind, 'b (h w) ... -> b h w ...', h=height, w=width)
+            quantize = rearrange(
+                quantize, 'b (h w) c -> b c h w', h=height, w=width)
+            embed_ind = rearrange(
+                embed_ind, 'b (h w) ... -> b h w ...', h=height, w=width)
 
         return quantize, embed_ind, vq_loss, self._codebook.perplexity
 
@@ -385,8 +399,8 @@ if __name__ == '__main__':
     vq = VectorQuantize(dim=D, codebook_size=512)
 
     quantize, vq_ind, vq_loss, perplexity = vq(x)
-    print(vq_ind[0])  # `vq_ind` is a set of codebook indices; e.g., 87 denotes the 88-th code in the codebook which can be accessed by `vq.codebook[87]`.
+    # `vq_ind` is a set of codebook indices; e.g., 87 denotes the 88-th code in the codebook which can be accessed by `vq.codebook[87]`.
+    print(vq_ind[0])
 
     # you can fetch the codebook weight by `vq.codebook`
     print('vq.codebook.shape:', vq.codebook.shape)  # (codebook_size, dim)
-
