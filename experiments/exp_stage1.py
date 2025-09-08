@@ -86,7 +86,7 @@ class ExpStage1(pl.LightningModule):
             x_rec = xhat_l + xhat_h  # (b c l)
             return x_rec  # (b c l)
 
-        recons_loss['LF.time'] = F.mse_loss(x_l, xhat_l)
+        recons_loss['LF.time'] = F.l1_loss(x_l, xhat_l)
         perplexities['LF'] = perplexity_l
         vq_losses['LF'] = vq_loss_l
 
