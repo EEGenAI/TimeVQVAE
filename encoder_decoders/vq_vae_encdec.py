@@ -7,6 +7,7 @@ from torch.nn.utils import weight_norm
 import torch.nn.functional as F
 import numpy as np
 from ..utils import timefreq_to_time, time_to_timefreq, SnakeActivation
+import math
 
 
 class ResBlock(nn.Module):
@@ -25,7 +26,8 @@ class ResBlock(nn.Module):
             weight_norm(nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, stride=(
                 1, 1), padding=padding, groups=in_channels)),
             weight_norm(nn.Conv2d(in_channels, mid_channels, kernel_size=1)),
-            nn.BatchNorm2d(out_channels),
+            nn.GroupNorm(32 if out_channels % 32 == 0 else (16 if out_channels % 16 == 0 else (8 if out_channels % 8 == 0 else (
+                4 if out_channels % 4 == 0 else (2 if out_channels % 2 == 0 else 1)))), out_channels),
             # SnakyGELU(out_channels, 2), #SnakeActivation(out_channels, 2), #nn.LeakyReLU(), #SnakeActivation(),
             SnakeActivation(out_channels, 2),
             weight_norm(nn.Conv2d(mid_channels, mid_channels, kernel_size=kernel_size, stride=(
@@ -57,7 +59,8 @@ class VQVAEEncBlock(nn.Module):
             weight_norm(nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, stride=(
                 1, 2), padding=padding, padding_mode='replicate', groups=in_channels)),
             weight_norm(nn.Conv2d(in_channels, out_channels, kernel_size=1)),
-            nn.BatchNorm2d(out_channels),
+            nn.GroupNorm(32 if out_channels % 32 == 0 else (16 if out_channels % 16 == 0 else (8 if out_channels % 8 == 0 else (
+                4 if out_channels % 4 == 0 else (2 if out_channels % 2 == 0 else 1)))), out_channels),
             # SnakyGELU(out_channels, 2), #SnakeActivation(out_channels, 2), #nn.LeakyReLU(), #SnakeActivation(),
             SnakeActivation(out_channels, 2),
             nn.Dropout(dropout))
@@ -84,7 +87,8 @@ class VQVAEDecBlock(nn.Module):
                 1, 2), padding=padding, groups=in_channels)),
             weight_norm(nn.ConvTranspose2d(
                 in_channels, out_channels, kernel_size=1)),
-            nn.BatchNorm2d(out_channels),
+            nn.GroupNorm(32 if out_channels % 32 == 0 else (16 if out_channels % 16 == 0 else (8 if out_channels % 8 == 0 else (
+                4 if out_channels % 4 == 0 else (2 if out_channels % 2 == 0 else 1)))), out_channels),
             # SnakyGELU(out_channels, 2), #SnakeActivation(out_channels, 2), #nn.LeakyReLU(), #SnakeActivation(),
             SnakeActivation(out_channels, 2),
             nn.Dropout(dropout))
