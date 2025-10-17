@@ -27,8 +27,8 @@ class ExpStage2(pl.LightningModule):
 
         self.maskgit = MaskGIT(dataset_name, in_channels, input_length,
                                **config['MaskGIT'], config=config, n_classes=n_classes)
-        self.metrics = Metrics(config, dataset_name, n_classes,
-                               feature_extractor_type=feature_extractor_type, use_custom_dataset=use_custom_dataset)
+        # self.metrics = Metrics(config, dataset_name, n_classes,
+        #                        feature_extractor_type=feature_extractor_type, use_custom_dataset=use_custom_dataset)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -71,27 +71,27 @@ class ExpStage2(pl.LightningModule):
             self.log(f'val/{k}', loss_hist[k])
 
         # maskgit sampling & evaluation
-        if batch_idx == 0 and (self.training == False):
-            print('computing evaluation metrices...')
-            self.maskgit.eval()
+        # if batch_idx == 0 and (self.training == False):
+        #     print('computing evaluation metrices...')
+        #     self.maskgit.eval()
 
-            n_samples = 1024
-            xhat_l, xhat_h, xhat = self.metrics.sample(
-                self.maskgit, x.device, n_samples, 'unconditional', class_index=None)
+        #     n_samples = 1024
+        #     xhat_l, xhat_h, xhat = self.metrics.sample(
+        #         self.maskgit, x.device, n_samples, 'unconditional', class_index=None)
 
-            self._visualize_generated_timeseries(xhat_l, xhat_h, xhat)
+        #     self._visualize_generated_timeseries(xhat_l, xhat_h, xhat)
 
-            # compute metrics
-            xhat = xhat.numpy()
-            zhat = self.metrics.z_gen_fn(xhat)
-            fid_test_gen = self.metrics.fid_score(self.metrics.z_test, zhat)
-            mdd, acd, sd, kd = self.metrics.stat_metrics(
-                self.metrics.X_test, xhat)
-            self.log('running_metrics/FID', fid_test_gen)
-            self.log('running_metrics/MDD', mdd)
-            self.log('running_metrics/ACD', acd)
-            self.log('running_metrics/SD', sd)
-            self.log('running_metrics/KD', kd)
+        #     # compute metrics
+        #     xhat = xhat.numpy()
+        #     zhat = self.metrics.z_gen_fn(xhat)
+        #     fid_test_gen = self.metrics.fid_score(self.metrics.z_test, zhat)
+        #     mdd, acd, sd, kd = self.metrics.stat_metrics(
+        #         self.metrics.X_test, xhat)
+        #     self.log('running_metrics/FID', fid_test_gen)
+        #     self.log('running_metrics/MDD', mdd)
+        #     self.log('running_metrics/ACD', acd)
+        #     self.log('running_metrics/SD', sd)
+        #     self.log('running_metrics/KD', kd)
 
         return loss_hist
 
