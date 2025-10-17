@@ -654,7 +654,7 @@ class BidirectionalTransformer(nn.Module):
                 ind = torch.rand(class_condition.shape).to(device) > self.p_unconditional  # to enable classifier-free guidance
             else:
                 ind = torch.ones_like(class_condition, dtype=torch.bool).to(device)
-            class_condition = torch.where(ind, class_condition.long(), self.n_classes)  # (b 1)
+            class_condition = torch.where(ind, class_condition.long(), self.n_classes).unsqueeze(dim=1)  # (b 1)
             cls_emb = self.class_condition_emb(class_condition)  # (b 1 dim)
             return cls_emb
 
