@@ -71,15 +71,21 @@ class ExpStage2(pl.LightningModule):
             self.log(f'val/{k}', loss_hist[k])
 
         # maskgit sampling & evaluation
-        # if batch_idx == 0 and (self.training == False):
-        #     print('computing evaluation metrices...')
-        #     self.maskgit.eval()
+        if batch_idx == 0 and (self.training == False):
+            print('computing evaluation metrices...')
+            self.maskgit.eval()
 
-        #     n_samples = 1024
-        #     xhat_l, xhat_h, xhat = self.metrics.sample(
-        #         self.maskgit, x.device, n_samples, 'unconditional', class_index=None)
+            n_samples = 128
+            xhat_l, xhat_h, xhat = sample(
+                batch_size=self.config['evaluation']['batch_size'],
+                maskgit=self.maskgit, 
+                device=x.device,
+                n_samples=n_samples,
+                kind='unconditional',
+                class_index=None
+            )
 
-        #     self._visualize_generated_timeseries(xhat_l, xhat_h, xhat)
+            self._visualize_generated_timeseries(xhat_l, xhat_h, xhat)
 
         #     # compute metrics
         #     xhat = xhat.numpy()
