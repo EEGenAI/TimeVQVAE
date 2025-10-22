@@ -75,7 +75,7 @@ class ExpStage2(pl.LightningModule):
             print('computing evaluation metrices...')
             self.maskgit.eval()
 
-            n_samples = 128
+            n_samples = 1024
             xhat_l, xhat_h, xhat = sample(
                 batch_size=self.config['evaluation']['batch_size'],
                 maskgit=self.maskgit, 
