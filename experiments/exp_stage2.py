@@ -124,7 +124,7 @@ class ExpStage2(pl.LightningModule):
         axes[2].set_title(r'$\hat{x}$ (LF+HF)')
         axes[2].plot(xhat[b, c, :])
         for ax in axes:
-            ax.set_ylim(-4, 4)
+            ax.set_ylim(-1, 1)
         plt.tight_layout()
         self.logger.log_image(key='generated sample',
                               images=[wandb.Image(plt),])
