@@ -409,8 +409,10 @@ class MaskGIT(nn.Module):
         unknown_number_in_the_beginning_h = torch.sum(
             s_h == self.mask_token_ids['hf'], dim=-1)  # (b,)
         gamma = self.gamma_func(mode)
-        class_condition = repeat(torch.Tensor([class_index]).int().to(
-            device), 'i -> b i', b=num) if class_index != None else None  # (b 1)
+        # class_condition = repeat(torch.Tensor([class_index]).int().to(
+        #     device), 'i -> b i', b=num) if class_index != None else None  # (b 1)
+
+        class_condition = torch.Tensor([class_index for _ in range(num)]).to(device) if class_index is None else None
 
         s_l = self.first_pass(
             s_l, unknown_number_in_the_beginning_l, class_condition, gamma, device)

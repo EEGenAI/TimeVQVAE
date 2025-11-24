@@ -81,8 +81,8 @@ class ExpStage2(pl.LightningModule):
                 maskgit=self.maskgit, 
                 device=x.device,
                 n_samples=n_samples,
-                kind='unconditional',
-                class_index=None
+                kind='conditional',
+                class_index=1 # Temporarily set to 1 
             )
 
             self._visualize_generated_timeseries(xhat_l, xhat_h, xhat)
