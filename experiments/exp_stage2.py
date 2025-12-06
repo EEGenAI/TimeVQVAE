@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from random import randint
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import wandb
 import pytorch_lightning as pl
@@ -8,6 +9,8 @@ import pytorch_lightning as pl
 from ..evaluation.metrics import Metrics, sample
 from ..generators.maskgit import MaskGIT
 from ..utils import linear_warmup_cosine_annealingLR
+
+from ..evaluation.classification_accuracy import EvaluateEEGEmotionClassificationAccuracy
 
 
 class ExpStage2(pl.LightningModule):
@@ -27,6 +30,11 @@ class ExpStage2(pl.LightningModule):
 
         self.maskgit = MaskGIT(dataset_name, in_channels, input_length,
                                **config['MaskGIT'], config=config, n_classes=n_classes)
+        self.classification_accuracy_evaluator = EvaluateEEGEmotionClassificationAccuracy(
+            dataset_name=dataset_name,
+            config=config,
+            use_custom_dataset=use_custom_dataset
+        )
         # self.metrics = Metrics(config, dataset_name, n_classes,
         #                        feature_extractor_type=feature_extractor_type, use_custom_dataset=use_custom_dataset)
 
@@ -75,17 +83,24 @@ class ExpStage2(pl.LightningModule):
             print('computing evaluation metrices...')
             self.maskgit.eval()
 
-            n_samples = 1024
+            n_samples = 32
+            rand_class_index = randint(0, self.n_classes-1) if self.n_classes > 1 else None
             xhat_l, xhat_h, xhat = sample(
                 batch_size=self.config['evaluation']['batch_size'],
                 maskgit=self.maskgit, 
                 device=x.device,
                 n_samples=n_samples,
                 kind='conditional',
-                class_index=1 # Temporarily set to 1 
+                class_index=rand_class_index
             )
 
             self._visualize_generated_timeseries(xhat_l, xhat_h, xhat)
+
+            # compute classification accuracy
+            if rand_class_index is not None:
+                true_labels = torch.full(size=(n_samples,), fill_value=rand_class_index, dtype=torch.long, device=xhat.device)
+                class_acc = self.classification_accuracy_evaluator.compute(xhat, true_labels)
+                self.log('metrics/generated_data_classification_accuracy', class_acc)
 
         #     # compute metrics
         #     xhat = xhat.numpy()
